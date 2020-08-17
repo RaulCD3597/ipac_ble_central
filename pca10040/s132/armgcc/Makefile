@@ -1,11 +1,11 @@
-PROJECT_NAME     := ble_app_multilink_central_pca10040_s132
-TARGETS          := nrf52832_xxaa
+PROJECT_NAME     := ipac_ble_central
+TARGETS          := ipac_ble_central
 OUTPUT_DIRECTORY := _build
 
 SDK_ROOT := ../../../../../..
 PROJ_DIR := ../../..
 
-$(OUTPUT_DIRECTORY)/nrf52832_xxaa.out: \
+$(OUTPUT_DIRECTORY)/ipac_ble_central.out: \
   LINKER_SCRIPT  := ble_app_multilink_central_gcc_nrf52.ld
 
 # Source files common to all targets
@@ -69,8 +69,9 @@ SRC_FILES += \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_ble.c \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
-  $(SDK_ROOT)/components/libraries/uart/app_uart.c \
+  $(SDK_ROOT)/components/libraries/uart/app_uart_fifo.c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus_c/ble_nus_c.c \
+  $(SDK_ROOT)/components/libraries/fifo/app_fifo.c
 
 # Include folders common to all targets
 INC_FOLDERS += \
@@ -207,6 +208,7 @@ INC_FOLDERS += \
   $(SDK_ROOT)/components/libraries/stack_guard \
   $(SDK_ROOT)/components/libraries/log/src \
   $(SDK_ROOT)/components/libraries/uart \
+  $(SDK_ROOT)/components/libraries/fifo \
 
 # Libraries common to all targets
 LIB_FILES += \
@@ -279,12 +281,12 @@ LIB_FILES += -lc -lnosys -lm
 .PHONY: default help
 
 # Default target - first one defined
-default: nrf52832_xxaa
+default: ipac_ble_central
 
 # Print all targets that can be built
 help:
 	@echo following targets are available:
-	@echo		nrf52832_xxaa
+	@echo		ipac_ble_central
 	@echo		flash_softdevice
 	@echo		sdk_config - starting external tool for editing sdk_config.h
 	@echo		flash      - flashing binary
@@ -300,8 +302,8 @@ $(foreach target, $(TARGETS), $(call define_target, $(target)))
 
 # Flash the program
 flash: default
-	@echo Flashing: $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex
-	nrfjprog -f nrf52 --program $(OUTPUT_DIRECTORY)/nrf52832_xxaa.hex --sectorerase
+	@echo Flashing: $(OUTPUT_DIRECTORY)/ipac_ble_central.hex
+	nrfjprog -f nrf52 --program $(OUTPUT_DIRECTORY)/ipac_ble_central.hex --sectorerase
 	nrfjprog -f nrf52 --reset
 
 # Flash softdevice
