@@ -10,7 +10,7 @@
 #include <string.h>
 
 // Nordic common library
-#include "nrf_pwr_mgmt.h"
+#include "nordic_common.h"
 
 // nrf drivers
 #include "nrf.h"
