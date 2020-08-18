@@ -57,7 +57,7 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="561" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="560" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="74" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="91" useTextEdit="1" openedFrom="/Users/raulcamacho/Documents/Nordic/nRF5_SDK_17.0.0_9d13099/examples/_programs/ipac_ble_central/main.c" useBinaryEdit="0" left="0" path="../../../../../../components/libraries/button/app_button.h" selected="0" top="81" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="781" useTextEdit="1" openedFrom="/Users/raulcamacho/Documents/Nordic/nRF5_SDK_17.0.0_9d13099/components/libraries/button/app_button.h" useBinaryEdit="0" left="0" path="../../../../../../modules/nrfx/hal/nrf_gpio.h" selected="0" top="767" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="6145" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../config/sdk_config.h" selected="0" top="6150" codecName="Default"/>
@@ -70,5 +70,5 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="234" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../../../../components/libraries/log/nrf_log_backend_interface.h" selected="0" top="223" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="42" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../../../../components/libraries/uart/app_uart_fifo.c" selected="0" top="37" codecName="Default"/>
  </Files>
- <ARMCrossStudioWindow activeProject="ipac_ble_central" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="/Users/raulcamacho/Documents/Nordic/nRF5_SDK_17.0.0_9d13099/components/libraries/uart" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <ARMCrossStudioWindow activeProject="ipac_ble_central" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Release" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="/Users/raulcamacho/Documents/Nordic/nRF5_SDK_17.0.0_9d13099/examples/_programs/ipac_ble_central/hardware" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>
