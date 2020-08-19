@@ -20,6 +20,6 @@ enum
 
 /* ----------------- public functions -----------------*/
 
-void hardware_Init(void);
+void hardware_init(void);
 
 #endif /* _HARDWARE_H_ */

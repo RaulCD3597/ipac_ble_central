@@ -60,12 +60,12 @@ static void idle_state_handle(void)
 int main(void)
 {
     // Initialize.
-    hardware_Init();
+    hardware_init();
     power_management_init();
-    Conn_Init();
+    conn_init();
 
     // Start execution.
-    Conn_StartScan();
+    conn_start_scan();
 
     for (;;)
     {

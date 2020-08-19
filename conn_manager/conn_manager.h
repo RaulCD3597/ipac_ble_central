@@ -10,7 +10,7 @@
 
 /* ----------------- public functions -----------------*/
 
-void Conn_Init(void);
-void Conn_StartScan(void);
+void conn_init(void);
+void conn_start_scan(void);
 
 #endif /* _CONN_MANAGER_H_ */

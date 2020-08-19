@@ -45,7 +45,7 @@ static void leds_init(void);
 
 /* ----------------- public functions -----------------*/
 
-void hardware_Init(void)
+void hardware_init(void)
 {
     uart_init();
     timer_init();

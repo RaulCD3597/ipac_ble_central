@@ -98,7 +98,7 @@ static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_le
 /**
  * @brief Function for initializing BLE connection.
  */
-void Conn_Init(void)
+void conn_init(void)
 {
     ble_stack_init();
     gatt_init();
@@ -111,7 +111,7 @@ void Conn_Init(void)
 /**
  * @brief Function for start scanning BLE devices.
  */
-void Conn_StartScan(void)
+void conn_start_scan(void)
 {
     ret_code_t ret;
 
@@ -188,7 +188,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         {
             // Resume scanning.
             nrf_gpio_pin_clear(CENTRAL_SCANNING_LED);
-            Conn_StartScan();
+            conn_start_scan();
         }
     }
     break; // BLE_GAP_EVT_CONNECTED
@@ -205,7 +205,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         }
 
         // Start scanning.
-        Conn_StartScan();
+        conn_start_scan();
 
         // Turn on the LED for indicating scanning.
         nrf_gpio_pin_clear(CENTRAL_SCANNING_LED);
@@ -364,7 +364,7 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
             break;
 
         case BLE_NUS_C_EVT_DISCONNECTED:
-            Conn_StartScan();
+            conn_start_scan();
             break;
     }
 }
