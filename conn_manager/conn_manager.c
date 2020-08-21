@@ -121,6 +121,31 @@ void conn_start_scan(void)
     nrf_gpio_pin_clear(CENTRAL_SCANNING_LED);
 }
 
+/**
+ * @brief Function for getting NUS fifo length.
+ */
+uint16_t * conn_get_nus_c_max_len(void)
+{
+    return ((uint16_t *)&m_ble_nus_max_data_len);
+}
+
+/**
+ * @brief Function for sending a string to a perif device.
+ */
+void conn_send_string(uint8_t * str, uint16_t length, uint8_t nus_instance)
+{
+    uint32_t ret_val;
+
+    do
+    {
+        ret_val = ble_nus_c_string_send(&m_nus_c[nus_instance], str, length);
+        if ((ret_val != NRF_ERROR_INVALID_STATE) && (ret_val != NRF_ERROR_RESOURCES))
+        {
+            APP_ERROR_CHECK(ret_val);
+        }
+    } while (ret_val != NRF_SUCCESS);
+}
+
 /* -----------------  local functions -----------------*/
 
 /**

@@ -24,6 +24,7 @@
 
 // ipac headers
 #include "hardware.h"
+#include "conn_manager.h"
 
 /* ----------------  local definitions ----------------*/
 
@@ -90,9 +91,24 @@ static void uart_init(void)
  */
 static void uart_event_handle(app_uart_evt_t *p_event)
 {
+    static uint8_t data_array[UART_RX_BUF_SIZE];
+    static uint16_t index = 0;
+
     switch (p_event->evt_type)
     {
     case APP_UART_DATA_READY:
+        UNUSED_VARIABLE(app_uart_get(&data_array[index]));
+        index++;
+
+        if ((data_array[index - 1] == '\n') ||
+            (data_array[index - 1] == '\r') ||
+            (index >= (*(conn_get_nus_c_max_len()))))
+        {
+            uint16_t nus_instance = data_array[0] - '0';
+            conn_send_string(data_array, index, nus_instance);
+
+            index = 0;
+        }
         break;
 
     case APP_UART_COMMUNICATION_ERROR:
