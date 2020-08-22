@@ -28,12 +28,14 @@
 
 /* ----------------  local definitions ----------------*/
 
-#define RX_PIN_NUMBER             8
-#define TX_PIN_NUMBER             6
-#define RTS_PIN_NUMBER            5
-#define CTS_PIN_NUMBER            7
-#define UART_TX_BUF_SIZE 256 /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE 256 /**< UART RX buffer size. */
+#define RX_PIN_NUMBER               8
+#define TX_PIN_NUMBER               6
+#define RTS_PIN_NUMBER              5
+#define CTS_PIN_NUMBER              7
+#define UART_TX_BUF_SIZE            256 /**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE            256 /**< UART RX buffer size. */
+#define BED_STRING_CMD              "\"bed\":"
+#define CALL_STRING_CMD             "\"start_call\":"
 
 /* -----------------  local variables -----------------*/
 
@@ -102,10 +104,39 @@ static void uart_event_handle(app_uart_evt_t *p_event)
 
         if ((data_array[index - 1] == '\n') ||
             (data_array[index - 1] == '\r') ||
-            (index >= (*(conn_get_nus_c_max_len()))))
+            (index >= UART_RX_BUF_SIZE ))
         {
-            uint16_t nus_instance = data_array[0] - '0';
-            conn_send_string(data_array, index, nus_instance);
+            uint8_t * received = (uint8_t *)data_array;
+
+            if (NULL != (received = (uint8_t *)strstr((const char *)received, BED_STRING_CMD)))
+            {
+                received += strlen(BED_STRING_CMD);
+                while (' ' == *received)
+                {
+                    received++;
+                }
+                uint8_t nus_instance = (*received) - '1';
+
+                uint8_t * received = (uint8_t *)data_array;
+                if (NULL != (received = (uint8_t *)strstr((const char *)received, CALL_STRING_CMD)))
+                {
+                    received += strlen(CALL_STRING_CMD);
+                    while (' ' == *received)
+                    {
+                        received++;
+                    }
+                    if (!memcmp(received, "true", 4))
+                    {
+                        uint8_t cmd[] = "{\"on_call\": true}";
+                        conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
+                    }
+                    else if (!memcmp(received, "false", 5))
+                    {
+                        uint8_t cmd[] = "{\"on_call\": false}";
+                        conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
+                    }
+                }
+            }
 
             index = 0;
         }
