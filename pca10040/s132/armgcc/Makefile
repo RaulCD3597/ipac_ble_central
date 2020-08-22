@@ -2,7 +2,7 @@ PROJECT_NAME     := ipac_ble_central
 TARGETS          := ipac_ble_central
 OUTPUT_DIRECTORY := _build
 
-SDK_ROOT := ../../../../../..
+SDK_ROOT := /Users/raulcamacho/Documents/Nordic/nRF5_SDK_17.0.0_9d13099
 PROJ_DIR := ../../..
 
 $(OUTPUT_DIRECTORY)/ipac_ble_central.out: \
