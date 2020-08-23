@@ -25,6 +25,7 @@
 // ipac headers
 #include "hardware.h"
 #include "conn_manager.h"
+#include "json_c.h"
 
 /* ----------------  local definitions ----------------*/
 
@@ -34,8 +35,8 @@
 #define CTS_PIN_NUMBER              7
 #define UART_TX_BUF_SIZE            256 /**< UART TX buffer size. */
 #define UART_RX_BUF_SIZE            256 /**< UART RX buffer size. */
-#define BED_STRING_CMD              "\"bed\":"
-#define CALL_STRING_CMD             "\"start_call\":"
+#define BED_STRING_CMD              "bed"
+#define CALL_STRING_CMD             "start_call"
 
 /* -----------------  local variables -----------------*/
 
@@ -160,23 +161,13 @@ static void uart_payload_parser(const uint8_t * payload)
 {
     uint8_t *received = (uint8_t *)payload;
 
-    if (NULL != (received = (uint8_t *)strstr((const char *)received, BED_STRING_CMD)))
+    if (NULL != (received = json_c_parser(received, (const uint8_t * const)BED_STRING_CMD)))
     {
-        received += strlen(BED_STRING_CMD);
-        while (' ' == *received)
-        {
-            received++;
-        }
         uint8_t nus_instance = (*received) - '1';
 
         received = (uint8_t *)payload;
-        if (NULL != (received = (uint8_t *)strstr((const char *)received, CALL_STRING_CMD)))
+        if (NULL != (received = json_c_parser(received, (const uint8_t * const)CALL_STRING_CMD)))
         {
-            received += strlen(CALL_STRING_CMD);
-            while (' ' == *received)
-            {
-                received++;
-            }
             if (!memcmp(received, "true", 4))
             {
                 uint8_t cmd[] = "{\"on_call\": true}";

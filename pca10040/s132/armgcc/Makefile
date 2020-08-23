@@ -13,6 +13,7 @@ SRC_FILES += \
   $(PROJ_DIR)/main.c \
   $(PROJ_DIR)/conn_manager/conn_manager.c \
   $(PROJ_DIR)/hardware/hardware.c \
+  $(PROJ_DIR)/json_c/json_c.c \
   $(SDK_ROOT)/modules/nrfx/mdk/gcc_startup_nrf52.S \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_rtt.c \
   $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_serial.c \
@@ -79,6 +80,7 @@ SRC_FILES += \
 INC_FOLDERS += \
   $(PROJ_DIR)/conn_manager \
   $(PROJ_DIR)/hardware \
+  $(PROJ_DIR)/json_c \
   $(SDK_ROOT)/components/nfc/ndef/generic/message \
   $(SDK_ROOT)/components/nfc/t2t_lib \
   $(SDK_ROOT)/components/nfc/t4t_parser/hl_detection_procedure \

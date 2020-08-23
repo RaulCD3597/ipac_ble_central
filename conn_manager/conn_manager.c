@@ -43,6 +43,9 @@
 // ipac headers
 #include "conn_manager.h"
 #include "hardware.h"
+#include "json_c.h"
+
+typedef void (*action_fcs)(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
 
 /* ----------------  local definitions ----------------*/
 
@@ -50,11 +53,23 @@
  * Tag that refers to the BLE stack configuration that is set with @ref sd_ble_cfg_set. 
  * The default tag is @ref APP_BLE_CONN_CFG_TAG. 
  */
-#define APP_BLE_CONN_CFG_TAG 1
+#define APP_BLE_CONN_CFG_TAG    1
 /** 
  * BLE observer priority of the application. There is no need to modify this value. 
  */
-#define APP_BLE_OBSERVER_PRIO 3
+#define APP_BLE_OBSERVER_PRIO   3
+/** 
+ * ID string to search. 
+ */
+#define CMD_ID_STR              "id"
+/** 
+ * bed string to search. 
+ */
+#define CMD_BED_STR              "bed"
+/** 
+ * No conection value for beds registered. 
+ */
+#define NO_CONNECTION            0xFF
 
 /* -----------------  local variables -----------------*/
 
@@ -77,6 +92,8 @@ NRF_BLE_GQ_DEF(m_ble_gatt_queue,
 static char const m_target_periph_name[] = "IPAC_perif";
 /** NUS fifo length */
 static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - OPCODE_LENGTH - HANDLE_LENGTH;
+/** Registered bed callers */
+static uint16_t conn_beds[7] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 /* ------------ local functions prototypes ------------*/
 
@@ -91,6 +108,20 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
 static void nus_error_handler(uint32_t nrf_error);
 static void scan_init(void);
 static void scan_evt_handler(scan_evt_t const * p_scan_evt);
+static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
+static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
+static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
+static void register_proccess(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
+
+/* ------------- local functions pointers -------------*/
+
+/** Funtiont to respective id */
+static action_fcs proccess_action[] = {
+    emergency_notify,
+    service_notify,
+    low_battery_notify,
+    register_proccess
+}; 
 
 /* ----------------- public functions -----------------*/
 
@@ -133,16 +164,16 @@ uint16_t * conn_get_nus_c_max_len(void)
  */
 void conn_send_string(uint8_t * str, uint16_t length, uint8_t nus_instance)
 {
-    uint32_t ret_val;
+    uint32_t ret_val = nus_instance;
 
-    if (nus_instance > (ble_conn_state_central_conn_count() - 1))
+    if (NO_CONNECTION == conn_beds[nus_instance])
     {
         return;
     }
 
     do
     {
-        ret_val = ble_nus_c_string_send(&m_nus_c[nus_instance], str, length);
+        ret_val = ble_nus_c_string_send(&m_nus_c[(conn_beds[nus_instance])], str, length);
         if ((ret_val != NRF_ERROR_INVALID_STATE) && (ret_val != NRF_ERROR_RESOURCES))
         {
             APP_ERROR_CHECK(ret_val);
@@ -377,6 +408,7 @@ static void nus_c_init(void)
 static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
 {
     ret_code_t err_code;
+    uint8_t * received = NULL;
     
     switch (p_ble_nus_evt->evt_type)
     {
@@ -389,7 +421,10 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
             break;
 
         case BLE_NUS_C_EVT_NUS_TX_EVT:
-            uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+            received = (uint8_t *)p_ble_nus_evt->p_data;
+            received = json_c_parser((const uint8_t *)received, (const uint8_t * const)CMD_ID_STR);
+            uint8_t id = *received - '1';
+            proccess_action[id](p_ble_nus_c, p_ble_nus_evt);
             break;
 
         case BLE_NUS_C_EVT_DISCONNECTED:
@@ -449,4 +484,44 @@ static void scan_evt_handler(scan_evt_t const * p_scan_evt)
         default:
             break;
     }
+}
+
+/**
+ * @brief Function for handling emergency notification.
+ */
+static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
+{
+    uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+}
+
+/**
+ * @brief Function for handling service notification.
+ */
+static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
+{
+    uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+}
+
+/**
+ * @brief Function for handling low battery notification.
+ */
+static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
+{
+    uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+}
+
+/**
+ * @brief Function for handling register notification.
+ */
+static void register_proccess(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
+{
+    uint8_t * received = p_ble_nus_evt->p_data;
+    received = json_c_parser((const uint8_t *)received, (const uint8_t * const)CMD_BED_STR);
+    uint8_t bed = (*received) - '1';
+    if (NO_CONNECTION != conn_beds[bed])
+    {
+        return;
+    }
+    conn_beds[bed] = p_ble_nus_c->conn_handle;
+    conn_send_string((uint8_t *)"OK", 2, bed);
 }
