@@ -43,6 +43,7 @@
 
 static void uart_init(void);
 static void uart_event_handle(app_uart_evt_t * p_event);
+static void uart_payload_parser(const uint8_t * payload);
 static void timer_init(void);
 static void leds_init(void);
 
@@ -53,6 +54,30 @@ void hardware_init(void)
     uart_init();
     timer_init();
     leds_init();
+}
+
+/**
+ * @brief Function for handling characters received by the Nordic UART Service (NUS).
+ *
+ * @details This function takes a list of characters of length data_len and prints the characters out on UART.
+ */
+void uart_send_string(uint8_t * p_data, uint16_t data_len)
+{
+    ret_code_t ret_val;
+
+    for (uint32_t i = 0; i < data_len; i++)
+    {
+        do
+        {
+            ret_val = app_uart_put(p_data[i]);
+            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
+            {
+                APP_ERROR_CHECK(ret_val);
+            }
+        } while (ret_val == NRF_ERROR_BUSY);
+    }
+    while (app_uart_put('\n') == NRF_ERROR_BUSY)
+        ;
 }
 
 /* -----------------  local functions -----------------*/
@@ -106,37 +131,7 @@ static void uart_event_handle(app_uart_evt_t *p_event)
             (data_array[index - 1] == '\r') ||
             (index >= UART_RX_BUF_SIZE ))
         {
-            uint8_t * received = (uint8_t *)data_array;
-
-            if (NULL != (received = (uint8_t *)strstr((const char *)received, BED_STRING_CMD)))
-            {
-                received += strlen(BED_STRING_CMD);
-                while (' ' == *received)
-                {
-                    received++;
-                }
-                uint8_t nus_instance = (*received) - '1';
-
-                uint8_t * received = (uint8_t *)data_array;
-                if (NULL != (received = (uint8_t *)strstr((const char *)received, CALL_STRING_CMD)))
-                {
-                    received += strlen(CALL_STRING_CMD);
-                    while (' ' == *received)
-                    {
-                        received++;
-                    }
-                    if (!memcmp(received, "true", 4))
-                    {
-                        uint8_t cmd[] = "{\"on_call\": true}";
-                        conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
-                    }
-                    else if (!memcmp(received, "false", 5))
-                    {
-                        uint8_t cmd[] = "{\"on_call\": false}";
-                        conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
-                    }
-                }
-            }
+            uart_payload_parser((const uint8_t *)data_array);
 
             index = 0;
         }
@@ -152,6 +147,47 @@ static void uart_event_handle(app_uart_evt_t *p_event)
 
     default:
         break;
+    }
+}
+
+/**
+ * @brief   Function for parsing uart frames.
+ *
+ * @details This function searches for a known command and triggers the action required
+ *      by the commad received.
+ */
+static void uart_payload_parser(const uint8_t * payload)
+{
+    uint8_t *received = (uint8_t *)payload;
+
+    if (NULL != (received = (uint8_t *)strstr((const char *)received, BED_STRING_CMD)))
+    {
+        received += strlen(BED_STRING_CMD);
+        while (' ' == *received)
+        {
+            received++;
+        }
+        uint8_t nus_instance = (*received) - '1';
+
+        received = (uint8_t *)payload;
+        if (NULL != (received = (uint8_t *)strstr((const char *)received, CALL_STRING_CMD)))
+        {
+            received += strlen(CALL_STRING_CMD);
+            while (' ' == *received)
+            {
+                received++;
+            }
+            if (!memcmp(received, "true", 4))
+            {
+                uint8_t cmd[] = "{\"on_call\": true}";
+                conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
+            }
+            else if (!memcmp(received, "false", 5))
+            {
+                uint8_t cmd[] = "{\"on_call\": false}";
+                conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
+            }
+        }
     }
 }
 

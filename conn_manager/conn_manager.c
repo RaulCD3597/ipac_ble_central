@@ -91,7 +91,6 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
 static void nus_error_handler(uint32_t nrf_error);
 static void scan_init(void);
 static void scan_evt_handler(scan_evt_t const * p_scan_evt);
-static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_len);
 
 /* ----------------- public functions -----------------*/
 
@@ -135,6 +134,11 @@ uint16_t * conn_get_nus_c_max_len(void)
 void conn_send_string(uint8_t * str, uint16_t length, uint8_t nus_instance)
 {
     uint32_t ret_val;
+
+    if (nus_instance > (ble_conn_state_central_conn_count() - 1))
+    {
+        return;
+    }
 
     do
     {
@@ -385,7 +389,7 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
             break;
 
         case BLE_NUS_C_EVT_NUS_TX_EVT:
-            ble_nus_chars_received_uart_print(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+            uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
             break;
 
         case BLE_NUS_C_EVT_DISCONNECTED:
@@ -402,31 +406,6 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
 static void nus_error_handler(uint32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
-}
-
-/**
- * @brief Function for handling characters received by the Nordic UART Service (NUS).
- *
- * @details This function takes a list of characters of length data_len and prints the characters out on UART.
- *          If @ref ECHOBACK_BLE_UART_DATA is set, the data is sent back to sender.
- */
-static void ble_nus_chars_received_uart_print(uint8_t * p_data, uint16_t data_len)
-{
-    ret_code_t ret_val;
-
-    for (uint32_t i = 0; i < data_len; i++)
-    {
-        do
-        {
-            ret_val = app_uart_put(p_data[i]);
-            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
-            {
-                APP_ERROR_CHECK(ret_val);
-            }
-        } while (ret_val == NRF_ERROR_BUSY);
-    }
-    while (app_uart_put('\n') == NRF_ERROR_BUSY)
-        ;
 }
 
 /**

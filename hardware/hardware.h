@@ -22,4 +22,6 @@ enum
 
 void hardware_init(void);
 
+void uart_send_string(uint8_t * p_data, uint16_t data_len);
+
 #endif /* _HARDWARE_H_ */
