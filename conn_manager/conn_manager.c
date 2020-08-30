@@ -70,6 +70,24 @@ typedef void (*action_fcs)(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_
  * No conection value for beds registered. 
  */
 #define NO_CONNECTION            0xFF
+/** 
+ * Number of names registered to look on scan process. 
+ */
+#define NAME_REGISTER_LEN        2
+/** 
+ * Template for emergency notify. 
+ */
+#define EMERGENCY_STR_FORMAT     "{\"bed\": %d, \"id\": 1}"
+/** 
+ * Template for service notify.  
+ */
+#define SERVICE_STR_FORMAT       "{\"bed\": %d, \"id\": 2}"
+/** 
+ * Template for low battery notify.  
+ */
+#define LOWBATT_STR_FORMAT       "{\"bed\": %d, \"id\": 3}"
+
+#define BED_QTY                  7
 
 /* -----------------  local variables -----------------*/
 
@@ -89,11 +107,20 @@ NRF_BLE_GQ_DEF(m_ble_gatt_queue,
  * Name of the device to try to connect to. 
  * This name is searched for in the scanning report data. 
  */
-static char const m_target_periph_name[] = "IPAC_perif";
+static char m_target_periph_name[2][21] = {
+    "34401540363542274495",
+    "39066043182642957650"
+};
 /** NUS fifo length */
 static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - OPCODE_LENGTH - HANDLE_LENGTH;
 /** Registered bed callers */
-static uint16_t conn_beds[7] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+static uint16_t conn_beds[BED_QTY] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+/**@brief NUS UUID. */
+static ble_uuid_t const m_nus_uuid =
+{
+    .uuid = BLE_UUID_NUS_SERVICE,
+    .type = BLE_UUID_TYPE_VENDOR_BEGIN
+};
 
 /* ------------ local functions prototypes ------------*/
 
@@ -111,7 +138,6 @@ static void scan_evt_handler(scan_evt_t const * p_scan_evt);
 static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
 static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
 static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
-static void register_proccess(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
 
 /* ------------- local functions pointers -------------*/
 
@@ -119,8 +145,7 @@ static void register_proccess(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const *
 static action_fcs proccess_action[] = {
     emergency_notify,
     service_notify,
-    low_battery_notify,
-    register_proccess
+    low_battery_notify
 }; 
 
 /* ----------------- public functions -----------------*/
@@ -215,10 +240,22 @@ static void ble_stack_init(void)
  */
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
+    static uint8_t bed_no = 0xFF;
+    static bool conn_enabled = false;
     ret_code_t err_code;
 
     // For readability.
-    ble_gap_evt_t const *p_gap_evt = &p_ble_evt->evt.gap_evt;
+    ble_gap_evt_t const * p_gap_evt = &p_ble_evt->evt.gap_evt;
+    uint8_t  adv_data [100];
+    strcpy((char *)&adv_data, (char *)p_gap_evt->params.adv_report.data.p_data); 
+    for (size_t i = 0; i < NAME_REGISTER_LEN; i++)
+    {
+        if (NULL != strstr((const char *)adv_data, m_target_periph_name[i]))
+        {
+            bed_no = i;
+            conn_enabled = true;
+        }
+    }
 
     switch (p_ble_evt->header.evt_id)
     {
@@ -232,6 +269,12 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
                                             p_gap_evt->conn_handle,
                                             NULL);
         APP_ERROR_CHECK(err_code);
+
+        if (conn_enabled)
+        {
+            conn_beds[bed_no] = p_gap_evt->conn_handle;
+            conn_enabled = false;
+        }
 
         err_code = ble_db_discovery_start(&m_db_disc[p_gap_evt->conn_handle],
                                           p_gap_evt->conn_handle);
@@ -459,7 +502,12 @@ static void scan_init(void)
     err_code = nrf_ble_scan_init(&m_scan, &init_scan, scan_evt_handler);
     APP_ERROR_CHECK(err_code);
 
-    err_code = nrf_ble_scan_filter_set(&m_scan, SCAN_NAME_FILTER, m_target_periph_name);
+    for (size_t i = 0; i < NAME_REGISTER_LEN; i++){
+        err_code = nrf_ble_scan_filter_set(&m_scan, SCAN_NAME_FILTER, m_target_periph_name[i]);
+        APP_ERROR_CHECK(err_code);
+    }
+
+    err_code = nrf_ble_scan_filter_set(&m_scan, SCAN_UUID_FILTER, &m_nus_uuid);
     APP_ERROR_CHECK(err_code);
 
     err_code = nrf_ble_scan_filters_enable(&m_scan, NRF_BLE_SCAN_NAME_FILTER, false);
@@ -491,7 +539,18 @@ static void scan_evt_handler(scan_evt_t const * p_scan_evt)
  */
 static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
 {
-    uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+    uint8_t notify_str[20];
+    uint8_t bed = 0;
+    for (size_t i = 0; i < BED_QTY; i++)
+    {
+        if (p_ble_nus_c->conn_handle == conn_beds[i])
+        {
+            bed = i + 1;
+            break;
+        }
+    }
+    sprintf((char *)notify_str, EMERGENCY_STR_FORMAT, bed);
+    uart_send_string(notify_str, strlen((char *)notify_str));
 }
 
 /**
@@ -499,7 +558,18 @@ static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * 
  */
 static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
 {
-    uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
+    uint8_t notify_str[20];
+    uint8_t bed = 0;
+    for (size_t i = 0; i < BED_QTY; i++)
+    {
+        if (p_ble_nus_c->conn_handle == conn_beds[i])
+        {
+            bed = i + 1;
+            break;
+        }
+    }
+    sprintf((char *)notify_str, SERVICE_STR_FORMAT, bed);
+    uart_send_string(notify_str, strlen((char *)notify_str));
 }
 
 /**
@@ -507,21 +577,16 @@ static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_
  */
 static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
 {
-    uart_send_string(p_ble_nus_evt->p_data, p_ble_nus_evt->data_len);
-}
-
-/**
- * @brief Function for handling register notification.
- */
-static void register_proccess(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
-{
-    uint8_t * received = p_ble_nus_evt->p_data;
-    received = json_c_parser((const uint8_t *)received, (const uint8_t * const)CMD_BED_STR);
-    uint8_t bed = (*received) - '1';
-    if (NO_CONNECTION != conn_beds[bed])
+    uint8_t notify_str[20];
+    uint8_t bed = 0;
+    for (size_t i = 0; i < BED_QTY; i++)
     {
-        return;
+        if (p_ble_nus_c->conn_handle == conn_beds[i])
+        {
+            bed = i + 1;
+            break;
+        }
     }
-    conn_beds[bed] = p_ble_nus_c->conn_handle;
-    conn_send_string((uint8_t *)"OK", 2, bed);
+    sprintf((char *)notify_str, LOWBATT_STR_FORMAT, bed);
+    uart_send_string(notify_str, strlen((char *)notify_str));
 }
