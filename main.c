@@ -34,7 +34,7 @@
  * @param[in] line_num     Line number of the failing assert call.
  * @param[in] p_file_name  File name of the failing assert call.
  */
-void assert_nrf_callback(uint16_t line_num, const uint8_t *p_file_name)
+void assert_nrf_callback(u_int16_t line_num, const u_int8_t *p_file_name)
 {
     app_error_handler(0xDEADBEEF, line_num, p_file_name);
 }

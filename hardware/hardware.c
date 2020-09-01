@@ -44,7 +44,7 @@
 
 static void uart_init(void);
 static void uart_event_handle(app_uart_evt_t * p_event);
-static void uart_payload_parser(const uint8_t * payload);
+static void uart_payload_parser(const u_int8_t * payload);
 static void timer_init(void);
 static void leds_init(void);
 
@@ -62,11 +62,11 @@ void hardware_init(void)
  *
  * @details This function takes a list of characters of length data_len and prints the characters out on UART.
  */
-void uart_send_string(uint8_t * p_data, uint16_t data_len)
+void uart_send_string(u_int8_t * p_data, u_int16_t data_len)
 {
     ret_code_t ret_val;
 
-    for (uint32_t i = 0; i < data_len; i++)
+    for (u_int32_t i = 0; i < data_len; i++)
     {
         do
         {
@@ -119,8 +119,8 @@ static void uart_init(void)
  */
 static void uart_event_handle(app_uart_evt_t *p_event)
 {
-    static uint8_t data_array[UART_RX_BUF_SIZE];
-    static uint16_t index = 0;
+    static u_int8_t data_array[UART_RX_BUF_SIZE];
+    static u_int16_t index = 0;
 
     switch (p_event->evt_type)
     {
@@ -132,7 +132,7 @@ static void uart_event_handle(app_uart_evt_t *p_event)
             (data_array[index - 1] == '\r') ||
             (index >= UART_RX_BUF_SIZE ))
         {
-            uart_payload_parser((const uint8_t *)data_array);
+            uart_payload_parser((const u_int8_t *)data_array);
 
             index = 0;
         }
@@ -157,25 +157,25 @@ static void uart_event_handle(app_uart_evt_t *p_event)
  * @details This function searches for a known command and triggers the action required
  *      by the commad received.
  */
-static void uart_payload_parser(const uint8_t * payload)
+static void uart_payload_parser(const u_int8_t * payload)
 {
-    uint8_t *received = (uint8_t *)payload;
+    u_int8_t *received = (u_int8_t *)payload;
 
-    if (NULL != (received = json_c_parser(received, (const uint8_t * const)BED_STRING_CMD)))
+    if (NULL != (received = json_c_parser(received, (const u_int8_t * const)BED_STRING_CMD)))
     {
-        uint8_t nus_instance = (*received) - '1';
+        u_int8_t nus_instance = (*received) - '1';
 
-        received = (uint8_t *)payload;
-        if (NULL != (received = json_c_parser(received, (const uint8_t * const)CALL_STRING_CMD)))
+        received = (u_int8_t *)payload;
+        if (NULL != (received = json_c_parser(received, (const u_int8_t * const)CALL_STRING_CMD)))
         {
             if (!memcmp(received, "true", 4))
             {
-                uint8_t cmd[] = "{\"on_call\": true}";
+                u_int8_t cmd[] = "{\"on_call\": true}";
                 conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
             }
             else if (!memcmp(received, "false", 5))
             {
-                uint8_t cmd[] = "{\"on_call\": false}";
+                u_int8_t cmd[] = "{\"on_call\": false}";
                 conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
             }
         }
@@ -198,7 +198,7 @@ static void timer_init(void)
  */
 static void leds_init(void)
 {
-    uint8_t led = CENTRAL_SCANNING_LED;
+    u_int8_t led = CENTRAL_SCANNING_LED;
     for (; led <= CENTRAL_CONNECTED_LED; led++)
     {
         nrf_gpio_cfg_output(led);

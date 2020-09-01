@@ -122,9 +122,9 @@ static char m_target_periph_name[2][21] = {
     "39066043182642957650"
 };
 /** NUS fifo length */
-static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - OPCODE_LENGTH - HANDLE_LENGTH;
+static u_int16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - OPCODE_LENGTH - HANDLE_LENGTH;
 /** Registered bed callers */
-static uint16_t conn_beds[BED_QTY] = { 
+static u_int16_t conn_beds[BED_QTY] = { 
                     NO_CONNECTION,
                     NO_CONNECTION,
                     NO_CONNECTION,
@@ -150,7 +150,7 @@ static void db_discovery_init(void);
 static void db_disc_handler(ble_db_discovery_evt_t * p_evt);
 static void nus_c_init(void);
 static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
-static void nus_error_handler(uint32_t nrf_error);
+static void nus_error_handler(u_int32_t nrf_error);
 static void scan_init(void);
 static void scan_evt_handler(scan_evt_t const * p_scan_evt);
 static u_int8_t conn_handle_to_bed(u_int16_t conn_handle);
@@ -189,17 +189,17 @@ void conn_start_scan(void)
 /**
  * @brief Function for getting NUS fifo length.
  */
-uint16_t * conn_get_nus_c_max_len(void)
+u_int16_t * conn_get_nus_c_max_len(void)
 {
-    return ((uint16_t *)&m_ble_nus_max_data_len);
+    return ((u_int16_t *)&m_ble_nus_max_data_len);
 }
 
 /**
  * @brief Function for sending a string to a perif device.
  */
-void conn_send_string(uint8_t * str, uint16_t length, uint8_t nus_instance)
+void conn_send_string(u_int8_t * str, u_int16_t length, u_int8_t nus_instance)
 {
-    uint32_t ret_val = nus_instance;
+    u_int32_t ret_val = nus_instance;
 
     if (NO_CONNECTION == conn_beds[nus_instance])
     {
@@ -231,7 +231,7 @@ static void ble_stack_init(void)
 
     // Configure the BLE stack using the default settings.
     // Fetch the start address of the application RAM.
-    uint32_t ram_start = 0;
+    u_int32_t ram_start = 0;
     err_code = nrf_sdh_ble_default_cfg_set(APP_BLE_CONN_CFG_TAG, &ram_start);
     APP_ERROR_CHECK(err_code);
 
@@ -250,14 +250,16 @@ static void ble_stack_init(void)
  */
 static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 {
-    static uint8_t bed_no = 0xFF;
+    static u_int8_t bed_no = 0xFF;
     static bool conn_enabled = false;
     ret_code_t err_code;
 
     // For readability.
     ble_gap_evt_t const * p_gap_evt = &p_ble_evt->evt.gap_evt;
-    uint8_t  adv_data [100];
+
+    u_int8_t  adv_data [100];
     strcpy((char *)&adv_data, (char *)p_gap_evt->params.adv_report.data.p_data); 
+
     for (size_t i = 0; i < NAME_REGISTER_LEN; i++)
     {
         if (NULL != strstr((const char *)adv_data, m_target_periph_name[i]))
@@ -445,7 +447,7 @@ static void nus_c_init(void)
     init.error_handler = nus_error_handler;
     init.p_gatt_queue  = &m_ble_gatt_queue;
 
-    for (uint32_t i = 0; i < NRF_SDH_BLE_CENTRAL_LINK_COUNT; i++)
+    for (u_int32_t i = 0; i < NRF_SDH_BLE_CENTRAL_LINK_COUNT; i++)
     {
         err_code = ble_nus_c_init(&m_nus_c[i], &init);
         APP_ERROR_CHECK(err_code);
@@ -462,7 +464,7 @@ static void nus_c_init(void)
 static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
 {
     ret_code_t err_code;
-    uint8_t * received = NULL;
+    u_int8_t * received = NULL;
     
     switch (p_ble_nus_evt->evt_type)
     {
@@ -475,8 +477,8 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
             break;
 
         case BLE_NUS_C_EVT_NUS_TX_EVT:
-            received = (uint8_t *)p_ble_nus_evt->p_data;
-            received = json_c_parser((const uint8_t *)received, (const uint8_t * const)CMD_ID_STR);
+            received = (u_int8_t *)p_ble_nus_evt->p_data;
+            received = json_c_parser((const u_int8_t *)received, (const u_int8_t * const)CMD_ID_STR);
             caller_evt_t evt = (caller_evt_t )(*received - '0');
             notify_evt(conn_handle_to_bed(p_ble_nus_c->conn_handle), evt);
             break;
@@ -492,7 +494,7 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
  *
  * @param[in]   nrf_error   Error code containing information about what went wrong.
  */
-static void nus_error_handler(uint32_t nrf_error)
+static void nus_error_handler(u_int32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
 }
@@ -570,7 +572,7 @@ static void notify_evt(u_int8_t bed, caller_evt_t evt)
     {
         return;
     }
-    uint8_t notify_str[20];
+    u_int8_t notify_str[20];
     sprintf((char *)notify_str, "{\"bed\": %d, \"id\": %d}", bed, evt);
     uart_send_string(notify_str, strlen((char *)notify_str));
 }
