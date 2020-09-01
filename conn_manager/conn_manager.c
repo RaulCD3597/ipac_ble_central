@@ -4,6 +4,8 @@
  * @date July 2020
  */
 
+//#pragma GCC optimize ("O0")
+
 // Standard libraries
 #include <stdint.h>
 #include <stdio.h>
@@ -45,7 +47,15 @@
 #include "hardware.h"
 #include "json_c.h"
 
+/* ------------------  local typedefs -----------------*/
+
 typedef void (*action_fcs)(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
+typedef enum{
+    EMERGENCY = 1,
+    SERVICE,
+    LOW_BATT,
+    DISCONNECTION
+} caller_evt_t;
 
 /* ----------------  local definitions ----------------*/
 
@@ -143,19 +153,10 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
 static void nus_error_handler(uint32_t nrf_error);
 static void scan_init(void);
 static void scan_evt_handler(scan_evt_t const * p_scan_evt);
-static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
-static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
-static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
-static void low_disconnect_notify(uint8_t bed);
+static u_int8_t conn_handle_to_bed(u_int16_t conn_handle);
+static void notify_evt(u_int8_t bed, caller_evt_t evt);
 
 /* ------------- local functions pointers -------------*/
-
-/** Funtiont to respective id */
-static action_fcs proccess_action[] = {
-    emergency_notify,
-    service_notify,
-    low_battery_notify
-}; 
 
 /* ----------------- public functions -----------------*/
 
@@ -309,15 +310,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     // the LEDs status and start scanning again.
     case BLE_GAP_EVT_DISCONNECTED:
     {
-        for (uint8_t index = 0; index < BED_QTY; index++)
-        {
-            if (p_gap_evt->conn_handle == conn_beds[index])
-            {
-                conn_beds[index] = NO_CONNECTION;
-                low_disconnect_notify(index + 1);
-                break;
-            }
-        }
+        notify_evt(conn_handle_to_bed(p_gap_evt->conn_handle), DISCONNECTION);
 
         if (ble_conn_state_central_conn_count() == 0)
         {
@@ -484,8 +477,8 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
         case BLE_NUS_C_EVT_NUS_TX_EVT:
             received = (uint8_t *)p_ble_nus_evt->p_data;
             received = json_c_parser((const uint8_t *)received, (const uint8_t * const)CMD_ID_STR);
-            uint8_t id = *received - '1';
-            proccess_action[id](p_ble_nus_c, p_ble_nus_evt);
+            caller_evt_t evt = (caller_evt_t )(*received - '0');
+            notify_evt(conn_handle_to_bed(p_ble_nus_c->conn_handle), evt);
             break;
 
         case BLE_NUS_C_EVT_DISCONNECTED:
@@ -553,68 +546,31 @@ static void scan_evt_handler(scan_evt_t const * p_scan_evt)
 }
 
 /**
- * @brief Function for handling emergency notification.
+ * @brief Function for getting the number of bed based on the conn_handle.
  */
-static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
+static u_int8_t conn_handle_to_bed(u_int16_t conn_handle)
 {
-    uint8_t notify_str[20];
-    uint8_t bed = 0;
     for (size_t i = 0; i < BED_QTY; i++)
     {
-        if (p_ble_nus_c->conn_handle == conn_beds[i])
+        if (conn_handle == conn_beds[i])
         {
-            bed = i + 1;
-            break;
+            return (i + 1);
         }
     }
-    sprintf((char *)notify_str, EMERGENCY_STR_FORMAT, bed);
-    uart_send_string(notify_str, strlen((char *)notify_str));
+    // Should not get to this point
+    return NO_CONNECTION;
 }
 
 /**
- * @brief Function for handling service notification.
+ * @brief Function for notifying a caller evt.
  */
-static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
+static void notify_evt(u_int8_t bed, caller_evt_t evt)
 {
-    uint8_t notify_str[20];
-    uint8_t bed = 0;
-    for (size_t i = 0; i < BED_QTY; i++)
+    if (BED_QTY < bed)
     {
-        if (p_ble_nus_c->conn_handle == conn_beds[i])
-        {
-            bed = i + 1;
-            break;
-        }
+        return;
     }
-    sprintf((char *)notify_str, SERVICE_STR_FORMAT, bed);
-    uart_send_string(notify_str, strlen((char *)notify_str));
-}
-
-/**
- * @brief Function for handling low battery notification.
- */
-static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt)
-{
     uint8_t notify_str[20];
-    uint8_t bed = 0;
-    for (size_t i = 0; i < BED_QTY; i++)
-    {
-        if (p_ble_nus_c->conn_handle == conn_beds[i])
-        {
-            bed = i + 1;
-            break;
-        }
-    }
-    sprintf((char *)notify_str, LOWBATT_STR_FORMAT, bed);
-    uart_send_string(notify_str, strlen((char *)notify_str));
-}
-
-/**
- * @brief Function for handling disconnect notification.
- */
-static void low_disconnect_notify(uint8_t bed)
-{
-    uint8_t notify_str[20];
-    sprintf((char *)notify_str, "{\"bed\": %d, \"id\": 4}", bed);
+    sprintf((char *)notify_str, "{\"bed\": %d, \"id\": %d}", bed, evt);
     uart_send_string(notify_str, strlen((char *)notify_str));
 }
