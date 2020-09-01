@@ -114,7 +114,15 @@ static char m_target_periph_name[2][21] = {
 /** NUS fifo length */
 static uint16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - OPCODE_LENGTH - HANDLE_LENGTH;
 /** Registered bed callers */
-static uint16_t conn_beds[BED_QTY] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+static uint16_t conn_beds[BED_QTY] = { 
+                    NO_CONNECTION,
+                    NO_CONNECTION,
+                    NO_CONNECTION,
+                    NO_CONNECTION,
+                    NO_CONNECTION, 
+                    NO_CONNECTION, 
+                    NO_CONNECTION
+                    };
 /**@brief NUS UUID. */
 static ble_uuid_t const m_nus_uuid =
 {
@@ -138,6 +146,7 @@ static void scan_evt_handler(scan_evt_t const * p_scan_evt);
 static void emergency_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
 static void service_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
 static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
+static void low_disconnect_notify(uint8_t bed);
 
 /* ------------- local functions pointers -------------*/
 
@@ -300,6 +309,15 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     // the LEDs status and start scanning again.
     case BLE_GAP_EVT_DISCONNECTED:
     {
+        for (uint8_t index = 0; index < BED_QTY; index++)
+        {
+            if (p_gap_evt->conn_handle == conn_beds[index])
+            {
+                conn_beds[index] = NO_CONNECTION;
+                low_disconnect_notify(index + 1);
+                break;
+            }
+        }
 
         if (ble_conn_state_central_conn_count() == 0)
         {
@@ -588,5 +606,15 @@ static void low_battery_notify(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const 
         }
     }
     sprintf((char *)notify_str, LOWBATT_STR_FORMAT, bed);
+    uart_send_string(notify_str, strlen((char *)notify_str));
+}
+
+/**
+ * @brief Function for handling disconnect notification.
+ */
+static void low_disconnect_notify(uint8_t bed)
+{
+    uint8_t notify_str[20];
+    sprintf((char *)notify_str, "{\"bed\": %d, \"id\": 4}", bed);
     uart_send_string(notify_str, strlen((char *)notify_str));
 }
