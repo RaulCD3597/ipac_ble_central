@@ -55,7 +55,7 @@ NRF_SDH_BLE_OBSERVERS(_name ## _obs,                     \
 typedef enum
 {
     BLE_ACS_C_EVT_DISCOVERY_COMPLETE,   /**< Event indicating that the ACS service and its characteristics were found. */
-    BLE_ACS_C_EVT_ACS_MIC_EVT,          /**< Event indicating that the central received something from a peer. */
+    BLE_ACS_C_EVT_MIC_EVT,          /**< Event indicating that the central received something from a peer. */
     BLE_ACS_C_EVT_DISCONNECTED          /**< Event indicating that the ACS server disconnected. */
 } ble_acs_c_evt_type_t;
 

@@ -84,9 +84,10 @@ static void on_hvx(ble_acs_c_t * p_ble_acs_c, ble_evt_t const * p_ble_evt)
     {
         ble_acs_c_evt_t ble_acs_c_evt;
 
-        ble_acs_c_evt.evt_type = BLE_ACS_C_EVT_ACS_MIC_EVT;
-        ble_acs_c_evt.p_data   = (uint8_t *)p_ble_evt->evt.gattc_evt.params.hvx.data;
-        ble_acs_c_evt.data_len = p_ble_evt->evt.gattc_evt.params.hvx.len;
+        ble_acs_c_evt.evt_type      = BLE_ACS_C_EVT_MIC_EVT;
+        ble_acs_c_evt.p_data        = (uint8_t *)p_ble_evt->evt.gattc_evt.params.hvx.data;
+        ble_acs_c_evt.data_len      = p_ble_evt->evt.gattc_evt.params.hvx.len;
+        ble_acs_c_evt.conn_handle   = p_ble_acs_c->conn_handle;
 
         p_ble_acs_c->evt_handler(p_ble_acs_c, &ble_acs_c_evt);
     }
@@ -212,7 +213,7 @@ uint32_t ble_acs_c_mic_notif_disable(ble_acs_c_t * p_ble_acs_c)
     {
         return NRF_ERROR_INVALID_STATE;
     }
-    return cccd_configure(p_ble_acs_c, true);
+    return cccd_configure(p_ble_acs_c, false);
 }
 
 

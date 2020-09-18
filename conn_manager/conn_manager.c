@@ -73,10 +73,6 @@ typedef enum{
  */
 #define CMD_ID_STR              "id"
 /** 
- * bed string to search. 
- */
-#define CMD_BED_STR              "bed"
-/** 
  * No conection value for beds registered. 
  */
 #define NO_CONNECTION            0xFF
@@ -84,18 +80,6 @@ typedef enum{
  * Number of names registered to look on scan process. 
  */
 #define NAME_REGISTER_LEN        2
-/** 
- * Template for emergency notify. 
- */
-#define EMERGENCY_STR_FORMAT     "{\"bed\": %d, \"id\": 1}"
-/** 
- * Template for service notify.  
- */
-#define SERVICE_STR_FORMAT       "{\"bed\": %d, \"id\": 2}"
-/** 
- * Template for low battery notify.  
- */
-#define LOWBATT_STR_FORMAT       "{\"bed\": %d, \"id\": 3}"
 
 #define BED_QTY                  7
 
@@ -105,6 +89,8 @@ typedef enum{
 NRF_BLE_GATT_DEF(m_gatt);
 /** NUS client instances. */
 BLE_NUS_C_ARRAY_DEF(m_nus_c, NRF_SDH_BLE_CENTRAL_LINK_COUNT);
+/** NUS client instances. */
+BLE_ACS_C_ARRAY_DEF(m_acs_c, NRF_SDH_BLE_CENTRAL_LINK_COUNT);
 /** Database discovery module instances. */
 BLE_DB_DISCOVERY_ARRAY_DEF(m_db_disc, NRF_SDH_BLE_CENTRAL_LINK_COUNT);
 /** Scanning Module instance. */
@@ -133,12 +119,6 @@ static u_int16_t conn_beds[BED_QTY] = {
                     NO_CONNECTION, 
                     NO_CONNECTION
                     };
-/**@brief NUS UUID. */
-static ble_uuid_t const m_nus_uuid =
-{
-    .uuid = BLE_UUID_NUS_SERVICE,
-    .type = BLE_UUID_TYPE_VENDOR_BEGIN
-};
 
 /* ------------ local functions prototypes ------------*/
 
@@ -150,11 +130,13 @@ static void db_discovery_init(void);
 static void db_disc_handler(ble_db_discovery_evt_t * p_evt);
 static void nus_c_init(void);
 static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
-static void nus_error_handler(u_int32_t nrf_error);
+static void services_error_handler(u_int32_t nrf_error);
 static void scan_init(void);
 static void scan_evt_handler(scan_evt_t const * p_scan_evt);
 static u_int8_t conn_handle_to_bed(u_int16_t conn_handle);
 static void notify_evt(u_int8_t bed, caller_evt_t evt);
+static void acs_c_init(void);
+static void ble_acs_c_evt_handler(ble_acs_c_t * p_ble_acs_c, ble_acs_c_evt_t const * p_ble_acs_evt);
 
 /* ------------- local functions pointers -------------*/
 
@@ -169,6 +151,7 @@ void conn_init(void)
     gatt_init();
     db_discovery_init();
     nus_c_init();
+    acs_c_init();
     ble_conn_state_init();
     scan_init();
 }
@@ -214,6 +197,18 @@ void conn_send_string(u_int8_t * str, u_int16_t length, u_int8_t nus_instance)
             APP_ERROR_CHECK(ret_val);
         }
     } while (ret_val != NRF_SUCCESS);
+}
+
+void conn_mic_enable(u_int8_t nus_instance)
+{
+    u_int32_t err_code = ble_acs_c_mic_notif_enable(&m_acs_c[(conn_beds[nus_instance])]);
+    APP_ERROR_CHECK(err_code);
+}
+
+void conn_mic_disable(u_int8_t nus_instance)
+{
+    u_int32_t err_code = ble_acs_c_mic_notif_disable(&m_acs_c[(conn_beds[nus_instance])]);
+    APP_ERROR_CHECK(err_code);
 }
 
 /* -----------------  local functions -----------------*/
@@ -278,6 +273,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         APP_ERROR_CHECK_BOOL(p_gap_evt->conn_handle < NRF_SDH_BLE_CENTRAL_LINK_COUNT);
 
         err_code = ble_nus_c_handles_assign(&m_nus_c[p_gap_evt->conn_handle],
+                                            p_gap_evt->conn_handle,
+                                            NULL);
+        APP_ERROR_CHECK(err_code);
+
+        err_code = ble_acs_c_handles_assign(&m_acs_c[p_gap_evt->conn_handle],
                                             p_gap_evt->conn_handle,
                                             NULL);
         APP_ERROR_CHECK(err_code);
@@ -433,6 +433,7 @@ static void db_discovery_init(void)
 static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 {
     ble_nus_c_on_db_disc_evt(&m_nus_c[p_evt->conn_handle], p_evt);
+    ble_acs_c_on_db_disc_evt(&m_acs_c[p_evt->conn_handle], p_evt);
 }
 
 /** 
@@ -444,7 +445,7 @@ static void nus_c_init(void)
     ble_nus_c_init_t init;
 
     init.evt_handler   = ble_nus_c_evt_handler;
-    init.error_handler = nus_error_handler;
+    init.error_handler = services_error_handler;
     init.p_gatt_queue  = &m_ble_gatt_queue;
 
     for (u_int32_t i = 0; i < NRF_SDH_BLE_CENTRAL_LINK_COUNT; i++)
@@ -490,11 +491,11 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
 }
 
 /**
- * @brief Function for handling the Nordic UART Service Client errors.
+ * @brief Function for handling the Services Client errors.
  *
  * @param[in]   nrf_error   Error code containing information about what went wrong.
  */
-static void nus_error_handler(u_int32_t nrf_error)
+static void services_error_handler(u_int32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
 }
@@ -519,9 +520,6 @@ static void scan_init(void)
         err_code = nrf_ble_scan_filter_set(&m_scan, SCAN_NAME_FILTER, m_target_periph_name[i]);
         APP_ERROR_CHECK(err_code);
     }
-
-    err_code = nrf_ble_scan_filter_set(&m_scan, SCAN_UUID_FILTER, &m_nus_uuid);
-    APP_ERROR_CHECK(err_code);
 
     err_code = nrf_ble_scan_filters_enable(&m_scan, NRF_BLE_SCAN_NAME_FILTER, false);
     APP_ERROR_CHECK(err_code);
@@ -575,4 +573,50 @@ static void notify_evt(u_int8_t bed, caller_evt_t evt)
     u_int8_t notify_str[20];
     sprintf((char *)notify_str, "{\"bed\": %d, \"id\": %d}", bed, evt);
     uart_send_string(notify_str, strlen((char *)notify_str));
+}
+
+/** 
+ * @brief Audio Custom service init.
+ */
+static void acs_c_init(void)
+{
+    ret_code_t       err_code;
+    ble_acs_c_init_t init;
+
+    init.evt_handler   = ble_acs_c_evt_handler;
+    init.error_handler = services_error_handler;
+    init.p_gatt_queue  = &m_ble_gatt_queue;
+
+    for (u_int32_t i = 0; i < NRF_SDH_BLE_CENTRAL_LINK_COUNT; i++)
+    {
+        err_code = ble_acs_c_init(&m_acs_c[i], &init);
+        APP_ERROR_CHECK(err_code);
+    }
+}
+
+/**@brief Callback handling Audio Custom Service (ACS) client events.
+ *
+ * @details This function is called to notify the application of ACS client events.
+ *
+ * @param[in]   p_ble_acs_c   ACS client handle. This identifies the ACS client.
+ * @param[in]   p_ble_acs_evt Pointer to the ACS client event.
+ */
+static void ble_acs_c_evt_handler(ble_acs_c_t * p_ble_acs_c, ble_acs_c_evt_t const * p_ble_acs_evt)
+{
+    ret_code_t err_code;
+    
+    switch (p_ble_acs_evt->evt_type)
+    {
+        case BLE_ACS_C_EVT_DISCOVERY_COMPLETE:
+            err_code = ble_acs_c_handles_assign(p_ble_acs_c, p_ble_acs_evt->conn_handle, &p_ble_acs_evt->handles);
+            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_ACS_C_EVT_MIC_EVT:
+            break;
+
+        case BLE_ACS_C_EVT_DISCONNECTED:
+            conn_start_scan();
+            break;
+    }
 }

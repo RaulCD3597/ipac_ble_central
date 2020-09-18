@@ -172,11 +172,13 @@ static void uart_payload_parser(const u_int8_t * payload)
             {
                 u_int8_t cmd[] = "{\"on_call\": true}";
                 conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
+                conn_mic_enable(nus_instance);
             }
             else if (!memcmp(received, "false", 5))
             {
                 u_int8_t cmd[] = "{\"on_call\": false}";
                 conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
+                conn_mic_disable(nus_instance);
             }
         }
     }
