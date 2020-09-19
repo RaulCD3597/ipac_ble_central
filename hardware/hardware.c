@@ -4,6 +4,8 @@
  * @date July 2020
  */
 
+#pragma GCC optimize ("O0")
+
 // Standard libraries
 #include <stdint.h>
 #include <stdio.h>
@@ -163,7 +165,7 @@ static void uart_payload_parser(const u_int8_t * payload)
 
     if (NULL != (received = json_c_parser(received, (const u_int8_t * const)BED_STRING_CMD)))
     {
-        u_int8_t nus_instance = (*received) - '1';
+        u_int8_t perif_instance = (*received) - '1';
 
         received = (u_int8_t *)payload;
         if (NULL != (received = json_c_parser(received, (const u_int8_t * const)CALL_STRING_CMD)))
@@ -171,14 +173,14 @@ static void uart_payload_parser(const u_int8_t * payload)
             if (!memcmp(received, "true", 4))
             {
                 u_int8_t cmd[] = "{\"on_call\": true}";
-                conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
-                conn_mic_enable(nus_instance);
+                conn_send_string(cmd, strlen((const char *)cmd), perif_instance);
+                conn_mic_enable(perif_instance);
             }
             else if (!memcmp(received, "false", 5))
             {
                 u_int8_t cmd[] = "{\"on_call\": false}";
-                conn_send_string(cmd, strlen((const char *)cmd), nus_instance);
-                conn_mic_disable(nus_instance);
+                conn_send_string(cmd, strlen((const char *)cmd), perif_instance);
+                conn_mic_disable(perif_instance);
             }
         }
     }

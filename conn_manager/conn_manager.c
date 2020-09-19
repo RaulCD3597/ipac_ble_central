@@ -4,7 +4,7 @@
  * @date July 2020
  */
 
-//#pragma GCC optimize ("O0")
+#pragma GCC optimize ("O0")
 
 // Standard libraries
 #include <stdint.h>
@@ -248,19 +248,22 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     static u_int8_t bed_no = 0xFF;
     static bool conn_enabled = false;
     ret_code_t err_code;
+    u_int8_t  adv_data [100];
 
     // For readability.
     ble_gap_evt_t const * p_gap_evt = &p_ble_evt->evt.gap_evt;
 
-    u_int8_t  adv_data [100];
-    strcpy((char *)&adv_data, (char *)p_gap_evt->params.adv_report.data.p_data); 
-
-    for (size_t i = 0; i < NAME_REGISTER_LEN; i++)
+    if ( 57 != (p_ble_evt->header.evt_id))
     {
-        if (NULL != strstr((const char *)adv_data, m_target_periph_name[i]))
+        strcpy((char *)&adv_data, (char *)p_gap_evt->params.adv_report.data.p_data); 
+
+        for (size_t i = 0; i < NAME_REGISTER_LEN; i++)
         {
-            bed_no = i;
-            conn_enabled = true;
+            if (NULL != strstr((const char *)adv_data, m_target_periph_name[i]))
+            {
+                bed_no = i;
+                conn_enabled = true;
+            }
         }
     }
 
