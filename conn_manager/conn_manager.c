@@ -253,7 +253,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
     // For readability.
     ble_gap_evt_t const * p_gap_evt = &p_ble_evt->evt.gap_evt;
 
-    if ( 57 != (p_ble_evt->header.evt_id))
+    if ( BLE_GAP_EVT_ADV_SET_TERMINATED > (p_ble_evt->header.evt_id))
     {
         strcpy((char *)&adv_data, (char *)p_gap_evt->params.adv_report.data.p_data); 
 
@@ -616,6 +616,7 @@ static void ble_acs_c_evt_handler(ble_acs_c_t * p_ble_acs_c, ble_acs_c_evt_t con
             break;
 
         case BLE_ACS_C_EVT_MIC_EVT:
+            uart_send_string(p_ble_acs_evt->p_data, p_ble_acs_evt->data_len);
             break;
 
         case BLE_ACS_C_EVT_DISCONNECTED:
