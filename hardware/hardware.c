@@ -60,7 +60,7 @@ void hardware_init(void)
 }
 
 /**
- * @brief Function for handling characters received by the Nordic UART Service (NUS).
+ * @brief Function for sending characters by the UART.
  *
  * @details This function takes a list of characters of length data_len and prints the characters out on UART.
  */
@@ -81,6 +81,28 @@ void uart_send_string(u_int8_t * p_data, u_int16_t data_len)
     }
     while (app_uart_put('\n') == NRF_ERROR_BUSY)
         ;
+}
+
+/**
+ * @brief Function for sending audio bytes through UART.
+ *
+ * @details This function takes a list of characters of length data_len and prints the characters out on UART.
+ */
+void uart_send_audio_frames(u_int8_t * p_data, u_int16_t data_len)
+{
+    ret_code_t ret_val;
+
+    for (u_int32_t i = 0; i < data_len; i++)
+    {
+        do
+        {
+            ret_val = app_uart_put(p_data[i]);
+            if ((ret_val != NRF_SUCCESS) && (ret_val != NRF_ERROR_BUSY))
+            {
+                APP_ERROR_CHECK(ret_val);
+            }
+        } while (ret_val == NRF_ERROR_BUSY);
+    }
 }
 
 /* -----------------  local functions -----------------*/

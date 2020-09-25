@@ -616,7 +616,7 @@ static void ble_acs_c_evt_handler(ble_acs_c_t * p_ble_acs_c, ble_acs_c_evt_t con
             break;
 
         case BLE_ACS_C_EVT_MIC_EVT:
-            uart_send_string(p_ble_acs_evt->p_data, p_ble_acs_evt->data_len);
+            uart_send_audio_frames(p_ble_acs_evt->p_data, p_ble_acs_evt->data_len);
             break;
 
         case BLE_ACS_C_EVT_DISCONNECTED:
