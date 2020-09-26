@@ -75,6 +75,7 @@ SRC_FILES += \
   $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
   $(SDK_ROOT)/components/libraries/uart/app_uart_fifo.c \
   $(SDK_ROOT)/components/ble/ble_services/ble_nus_c/ble_nus_c.c \
+  $(SDK_ROOT)/components/ble/ble_services/ble_bas_c/ble_bas_c.c \
   $(SDK_ROOT)/components/libraries/fifo/app_fifo.c
 
 # Include folders common to all targets

@@ -80,8 +80,14 @@ typedef enum{
  * Number of names registered to look on scan process. 
  */
 #define NAME_REGISTER_LEN        2
-
+/** 
+ * Number of max beds to be registered to look on scan process. 
+ */
 #define BED_QTY                  7
+/** 
+ * Percentage of battery level to be notified as low. 
+ */
+#define LOW_BATT_NOTIF_LEVEL     25
 
 /* -----------------  local variables -----------------*/
 
@@ -89,8 +95,10 @@ typedef enum{
 NRF_BLE_GATT_DEF(m_gatt);
 /** NUS client instances. */
 BLE_NUS_C_ARRAY_DEF(m_nus_c, NRF_SDH_BLE_CENTRAL_LINK_COUNT);
-/** NUS client instances. */
+/** ACS client instances. */
 BLE_ACS_C_ARRAY_DEF(m_acs_c, NRF_SDH_BLE_CENTRAL_LINK_COUNT);
+/** BAS client instances. */
+BLE_BAS_C_ARRAY_DEF(m_bas_c, NRF_SDH_BLE_CENTRAL_LINK_COUNT);
 /** Database discovery module instances. */
 BLE_DB_DISCOVERY_ARRAY_DEF(m_db_disc, NRF_SDH_BLE_CENTRAL_LINK_COUNT);
 /** Scanning Module instance. */
@@ -137,6 +145,8 @@ static u_int8_t conn_handle_to_bed(u_int16_t conn_handle);
 static void notify_evt(u_int8_t bed, caller_evt_t evt);
 static void acs_c_init(void);
 static void ble_acs_c_evt_handler(ble_acs_c_t * p_ble_acs_c, ble_acs_c_evt_t const * p_ble_acs_evt);
+static void bas_c_init(void);
+static void ble_bas_c_evt_handler(ble_bas_c_t * p_ble_bas_c, ble_bas_c_evt_t * p_ble_bas_evt);
 
 /* ------------- local functions pointers -------------*/
 
@@ -152,6 +162,7 @@ void conn_init(void)
     db_discovery_init();
     nus_c_init();
     acs_c_init();
+    bas_c_init();
     ble_conn_state_init();
     scan_init();
 }
@@ -281,6 +292,11 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
         APP_ERROR_CHECK(err_code);
 
         err_code = ble_acs_c_handles_assign(&m_acs_c[p_gap_evt->conn_handle],
+                                            p_gap_evt->conn_handle,
+                                            NULL);
+        APP_ERROR_CHECK(err_code);
+
+        err_code = ble_bas_c_handles_assign(&m_bas_c[p_gap_evt->conn_handle],
                                             p_gap_evt->conn_handle,
                                             NULL);
         APP_ERROR_CHECK(err_code);
@@ -437,6 +453,7 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt)
 {
     ble_nus_c_on_db_disc_evt(&m_nus_c[p_evt->conn_handle], p_evt);
     ble_acs_c_on_db_disc_evt(&m_acs_c[p_evt->conn_handle], p_evt);
+    ble_bas_on_db_disc_evt(&m_bas_c[p_evt->conn_handle], p_evt);
 }
 
 /** 
@@ -621,6 +638,58 @@ static void ble_acs_c_evt_handler(ble_acs_c_t * p_ble_acs_c, ble_acs_c_evt_t con
 
         case BLE_ACS_C_EVT_DISCONNECTED:
             conn_start_scan();
+            break;
+    }
+}
+
+/** 
+ * @brief Battery service init.
+ */
+static void bas_c_init(void)
+{
+    ret_code_t       err_code;
+    ble_bas_c_init_t init;
+
+    init.evt_handler   = ble_bas_c_evt_handler;
+    init.error_handler = services_error_handler;
+    init.p_gatt_queue  = &m_ble_gatt_queue;
+
+    for (u_int32_t i = 0; i < NRF_SDH_BLE_CENTRAL_LINK_COUNT; i++)
+    {
+        err_code = ble_bas_c_init(&m_bas_c[i], &init);
+        APP_ERROR_CHECK(err_code);
+    }
+}
+
+/**@brief Callback handling Battery Service (BAS) client events.
+ *
+ * @details This function is called to notify the application of BAS client events.
+ *
+ * @param[in]   p_bas_bas_c   BAS client handle. This identifies the BAS client.
+ * @param[in]   p_ble_bas_evt Pointer to the BAS client event.
+ */
+static void ble_bas_c_evt_handler(ble_bas_c_t * p_ble_bas_c, ble_bas_c_evt_t * p_ble_bas_evt)
+{
+    ret_code_t err_code;
+    
+    switch (p_ble_bas_evt->evt_type)
+    {
+        case BLE_BAS_C_EVT_DISCOVERY_COMPLETE:
+            err_code = ble_bas_c_handles_assign(p_ble_bas_c, p_ble_bas_evt->conn_handle, &p_ble_bas_evt->params.bas_db);
+            APP_ERROR_CHECK(err_code);
+
+            err_code = ble_bas_c_bl_notif_enable(p_ble_bas_c);
+            APP_ERROR_CHECK(err_code);
+            break;
+
+        case BLE_BAS_C_EVT_BATT_NOTIFICATION:
+            if (LOW_BATT_NOTIF_LEVEL > p_ble_bas_evt->params.battery_level)
+            {
+                notify_evt(conn_handle_to_bed(p_ble_bas_c->conn_handle), LOW_BATT);
+            }
+            break;
+
+        case BLE_BAS_C_EVT_BATT_READ_RESP:
             break;
     }
 }

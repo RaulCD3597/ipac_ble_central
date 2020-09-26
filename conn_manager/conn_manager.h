@@ -9,6 +9,7 @@
 #define _CONN_MANAGER_H_
 
 #include "ble_acs_c.h"
+#include "ble_bas_c.h"
 
 /* ----------------- public functions -----------------*/
 

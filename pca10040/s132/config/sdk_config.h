@@ -364,7 +364,7 @@
  
 
 #ifndef BLE_BAS_C_ENABLED
-#define BLE_BAS_C_ENABLED 0
+#define BLE_BAS_C_ENABLED 1
 #endif
 
 // <e> BLE_BAS_ENABLED - ble_bas - Battery Service
