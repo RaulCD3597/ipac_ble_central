@@ -79,7 +79,7 @@ typedef enum{
 /** 
  * Number of names registered to look on scan process. 
  */
-#define NAME_REGISTER_LEN        2
+#define NAME_REGISTER_LEN        7
 /** 
  * Number of max beds to be registered to look on scan process. 
  */
@@ -111,10 +111,7 @@ NRF_BLE_GQ_DEF(m_ble_gatt_queue,
  * Name of the device to try to connect to. 
  * This name is searched for in the scanning report data. 
  */
-static char m_target_periph_name[2][21] = {
-    "34401540363542274495",
-    "39066043182642957650"
-};
+static char m_target_periph_name[NAME_REGISTER_LEN][21];
 /** NUS fifo length */
 static u_int16_t m_ble_nus_max_data_len = BLE_GATT_ATT_MTU_DEFAULT - OPCODE_LENGTH - HANDLE_LENGTH;
 /** Registered bed callers */
@@ -139,7 +136,6 @@ static void db_disc_handler(ble_db_discovery_evt_t * p_evt);
 static void nus_c_init(void);
 static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t const * p_ble_nus_evt);
 static void services_error_handler(u_int32_t nrf_error);
-static void scan_init(void);
 static void scan_evt_handler(scan_evt_t const * p_scan_evt);
 static u_int8_t conn_handle_to_bed(u_int16_t conn_handle);
 static void notify_evt(u_int8_t bed, caller_evt_t evt);
@@ -164,7 +160,6 @@ void conn_init(void)
     acs_c_init();
     bas_c_init();
     ble_conn_state_init();
-    scan_init();
 }
 
 /**
@@ -222,6 +217,45 @@ void conn_mic_disable(u_int8_t nus_instance)
     APP_ERROR_CHECK(err_code);
 }
 
+/**
+ * @brief Function for initializing the scanning and setting the filters.
+ */
+void scan_init(void)
+{
+    ret_code_t          err_code;
+    nrf_ble_scan_init_t init_scan;
+
+    memset(&init_scan, 0, sizeof(init_scan));
+
+    init_scan.connect_if_match = true;
+    init_scan.conn_cfg_tag     = APP_BLE_CONN_CFG_TAG;
+
+    err_code = nrf_ble_scan_init(&m_scan, &init_scan, scan_evt_handler);
+    APP_ERROR_CHECK(err_code);
+
+    for (size_t i = 0; i < NAME_REGISTER_LEN; i++)
+    {
+        if('\0' == m_target_periph_name[i][0])
+        {
+            continue;
+        }   
+        err_code = nrf_ble_scan_filter_set(&m_scan, SCAN_NAME_FILTER, m_target_periph_name[i]);
+        APP_ERROR_CHECK(err_code);
+    }
+
+    err_code = nrf_ble_scan_filters_enable(&m_scan, NRF_BLE_SCAN_NAME_FILTER, false);
+    APP_ERROR_CHECK(err_code);
+}
+
+void conn_bed_register(u_int8_t bed_no, u_int8_t * device_id)
+{
+    if( NULL == device_id )
+    {
+        return;
+    }
+    memcpy( m_target_periph_name[bed_no], device_id, 20 );
+}
+
 /* -----------------  local functions -----------------*/
 
 /**
@@ -274,6 +308,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
             {
                 bed_no = i;
                 conn_enabled = true;
+                break;
             }
         }
     }
@@ -303,7 +338,9 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         if (conn_enabled)
         {
+            bed_no = (0 == bed_no)? 6 : (bed_no - 1);
             conn_beds[bed_no] = p_gap_evt->conn_handle;
+            bed_no = 0xFF;
             conn_enabled = false;
         }
 
@@ -518,31 +555,6 @@ static void ble_nus_c_evt_handler(ble_nus_c_t * p_ble_nus_c, ble_nus_c_evt_t con
 static void services_error_handler(u_int32_t nrf_error)
 {
     APP_ERROR_HANDLER(nrf_error);
-}
-
-/**
- * @brief Function for initializing the scanning and setting the filters.
- */
-static void scan_init(void)
-{
-    ret_code_t          err_code;
-    nrf_ble_scan_init_t init_scan;
-
-    memset(&init_scan, 0, sizeof(init_scan));
-
-    init_scan.connect_if_match = true;
-    init_scan.conn_cfg_tag     = APP_BLE_CONN_CFG_TAG;
-
-    err_code = nrf_ble_scan_init(&m_scan, &init_scan, scan_evt_handler);
-    APP_ERROR_CHECK(err_code);
-
-    for (size_t i = 0; i < NAME_REGISTER_LEN; i++){
-        err_code = nrf_ble_scan_filter_set(&m_scan, SCAN_NAME_FILTER, m_target_periph_name[i]);
-        APP_ERROR_CHECK(err_code);
-    }
-
-    err_code = nrf_ble_scan_filters_enable(&m_scan, NRF_BLE_SCAN_NAME_FILTER, false);
-    APP_ERROR_CHECK(err_code);
 }
 
 /**

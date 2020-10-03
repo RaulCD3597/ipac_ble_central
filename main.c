@@ -64,9 +64,6 @@ int main(void)
     power_management_init();
     conn_init();
 
-    // Start execution.
-    conn_start_scan();
-
     for (;;)
     {
         idle_state_handle();

@@ -39,6 +39,8 @@
 #define UART_RX_BUF_SIZE            256 /**< UART RX buffer size. */
 #define BED_STRING_CMD              "bed"
 #define CALL_STRING_CMD             "start_call"
+#define METHOD_STR_CMD              "method"
+#define DEVICE_STR_CMD              "device"
 
 /* -----------------  local variables -----------------*/
 
@@ -203,6 +205,33 @@ static void uart_payload_parser(const u_int8_t * payload)
                 u_int8_t cmd[] = "{\"on_call\": false}";
                 conn_send_string(cmd, strlen((const char *)cmd), perif_instance);
                 conn_mic_disable(perif_instance);
+            }
+        }
+        else 
+        {
+            received = (u_int8_t *)payload;
+            if (NULL != (received = json_c_parser(received, (const u_int8_t * const)METHOD_STR_CMD)))
+            {
+                if (!memcmp(received, "\"register\"", 10))
+                {
+                    if (NULL != (received = json_c_parser(received, (const u_int8_t * const)DEVICE_STR_CMD)))
+                    {
+                        received++;
+                        conn_bed_register(perif_instance, received);
+                    }
+                }
+            }
+        }
+    }
+    else
+    {
+        received = (u_int8_t *)payload;
+        if ( NULL != (received = json_c_parser(received, (const u_int8_t *const)METHOD_STR_CMD)) )
+        {
+            if (!memcmp(received, "\"start_scan\"", 12))
+            {
+                scan_init();
+                conn_start_scan();
             }
         }
     }
