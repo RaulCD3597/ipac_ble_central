@@ -233,6 +233,10 @@ static void uart_payload_parser(const u_int8_t * payload)
                 scan_init();
                 conn_start_scan();
             }
+            else if (!memcmp(received, "\"reset\"", 7))
+            {
+                NVIC_SystemReset();
+            }
         }
     }
 }
