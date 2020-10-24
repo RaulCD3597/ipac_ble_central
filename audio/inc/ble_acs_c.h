@@ -10,8 +10,6 @@
 #include "nrf_ble_gq.h"
 #include "nrf_sdh_ble.h"
 
-#include "drv_audio_config.h"
-
 #ifndef BLE_ACS_C_BLE_OBSERVER_PRIO
 #define BLE_ACS_C_BLE_OBSERVER_PRIO 2
 #endif
