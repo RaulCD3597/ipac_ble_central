@@ -46,7 +46,7 @@ NRF_SDH_BLE_OBSERVERS(_name ## _obs,                     \
 #define BLE_UUID_ACS_CONFIG_CHAR    0x0501      /**< The UUID of the config Characteristic. */
 #define BLE_UUID_ACS_MIC_CHAR       0x0502      /**< The UUID of the microphone Characteristic. */
 
-#define BLE_ACS_MAX_DATA_LEN (BLE_GATT_ATT_MTU_DEFAULT - 3)     /**< Maximum length of data (in bytes) that can be transmitted to the peer by the Audio Custom service module. */
+#define BLE_ACS_MAX_DATA_LEN        (NRF_SDH_BLE_GATT_MAX_MTU_SIZE - 3)     /**< Maximum length of data (in bytes) that can be transmitted to the peer by the Audio Custom service module. */
 #define BLE_ACS_MIC_FRAME_SIZE      CONFIG_AUDIO_FRAME_SIZE_BYTES
 
 /**@brief ACS Client event type. */

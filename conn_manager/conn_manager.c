@@ -338,7 +338,7 @@ static void ble_evt_handler(ble_evt_t const * p_ble_evt, void * p_context)
 
         if (conn_enabled)
         {
-            conn_beds[bed_no] = p_gap_evt->conn_handle;
+            conn_beds[bed_no % BED_QTY] = p_gap_evt->conn_handle;
             bed_no = 0xFF;
             conn_enabled = false;
         }

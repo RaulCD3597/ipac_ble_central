@@ -35,8 +35,8 @@
 #define TX_PIN_NUMBER               6
 #define RTS_PIN_NUMBER              5
 #define CTS_PIN_NUMBER              7
-#define UART_TX_BUF_SIZE            256 /**< UART TX buffer size. */
-#define UART_RX_BUF_SIZE            256 /**< UART RX buffer size. */
+#define UART_TX_BUF_SIZE            1024 /**< UART TX buffer size. */
+#define UART_RX_BUF_SIZE            1024 /**< UART RX buffer size. */
 #define BED_STRING_CMD              "bed"
 #define CALL_STRING_CMD             "start_call"
 #define METHOD_STR_CMD              "method"
@@ -155,7 +155,6 @@ static void uart_event_handle(app_uart_evt_t *p_event)
         index++;
 
         if ((data_array[index - 1] == '\n') ||
-            (data_array[index - 1] == '\r') ||
             (index >= UART_RX_BUF_SIZE ))
         {
             uart_payload_parser((const u_int8_t *)data_array);
